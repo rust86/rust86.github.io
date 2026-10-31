@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LensText OCR — Бесплатное распознавание текста со скриншотов онлайн</title>
+  <meta name="description" content="Бесплатное и безопасное распознавание текста со скриншотов и фото онлайн прямо в браузере (Ctrl+V). Русский и английский языки, без регистрации и передачи на сервер.">
+  <meta name="keywords" content="ocr онлайн, распознать текст со скриншота, распознавание текста бесплатно, tesseract онлайн, скопировать текст с картинки">
+
+  <!-- Метатеги подтверждения поисковых систем -->
+  <meta name="yandex-verification" content="4ee02d515e683e7d" />
+  <meta name="google-site-verification" content="fpqU91KmJvqzYIf43ERGvBow8wZVrIFi47SDfQQ36B4" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tesseract.js v5 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #09090b 70%);
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(18, 18, 23, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+
+  <!-- Навигация -->
+  <header class="border-b border-white/10 sticky top-0 z-30 bg-[#09090b]/80 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="scan-text" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg text-white tracking-tight">LensText <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">OCR AI</span></span>
+          <p class="text-xs text-slate-400 hidden sm:block">100% локальное распознавание текста без отправки на сервер</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnWebcam" class="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-slate-300" title="Снимок с веб-камеры">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+        </button>
+        <button id="btnOpenHistory" class="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-slate-300" title="История распознаваний">
+          <i data-lucide="history" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Левая колонка: Загрузка и Предобработка -->
+      <div class="lg:col-span-6 flex flex-col gap-5">
+        
+        <!-- Дропзона / Холст предпросмотра -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col items-center justify-center min-h-[380px] relative overflow-hidden group">
+          
+          <!-- Зона ожидания файла -->
+          <div id="dropZone" class="w-full h-full border-2 border-dashed border-white/15 hover:border-indigo-500/50 rounded-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.03]">
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <div class="w-14 h-14 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <i data-lucide="image-up" class="w-7 h-7"></i>
+            </div>
+            <p class="text-base font-medium text-slate-200 mb-1">Перетащите изображение сюда или выберите файл</p>
+            <p class="text-xs text-slate-400 mb-4">Поддерживаются PNG, JPG, WEBP, BMP</p>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-slate-300">
+              <span>Или нажмите</span>
+              <kbd class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono text-[11px] text-indigo-300">Ctrl + V</kbd>
+              <span>для вставки скриншота</span>
+            </div>
+          </div>
+
+          <!-- Контейнер предпросмотра и кадрирования -->
+          <div id="previewContainer" class="hidden w-full flex flex-col items-center">
+            <div class="relative w-full flex items-center justify-center max-h-[420px] overflow-hidden rounded-lg bg-black/30 border border-white/10 select-none" id="imageWrapper">
+              <img id="previewImg" class="max-w-full max-h-[420px] object-contain transition-all" alt="Предпросмотр">
+              <!-- Оверлей выделения кадрирования -->
+              <div id="cropBox" class="hidden absolute border-2 border-dashed border-indigo-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] pointer-events-none cursor-crosshair"></div>
+            </div>
+
+            <!-- Тулбар действий над изображением -->
+            <div class="flex flex-wrap items-center justify-between w-full mt-3 gap-2">
+              <div class="flex items-center gap-1.5">
+                <button id="btnToggleCrop" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-colors">
+                  <i data-lucide="crop" class="w-3.5 h-3.5"></i>
+                  <span>Обрезать</span>
+                </button>
+                <button id="btnResetImage" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-400 hover:text-white transition-colors">
+                  Сбросить кадрирование
+                </button>
+              </div>
+              <button id="btnClearImage" class="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors text-xs flex items-center gap-1">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span>Удалить</span>
+              </button>
+            </div>
+
+            <!-- Всплывающая панель подтверждения Crop -->
+            <div id="cropActions" class="hidden flex items-center gap-2 mt-2 w-full justify-center">
+              <button id="btnApplyCrop" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1 shadow-md shadow-indigo-600/30">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i> Применить выделение
+              </button>
+              <button id="btnCancelCrop" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-medium text-xs">
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Панель фильтров улучшения читаемости -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Фильтры для нечеткого текста</span>
+            <span class="text-[11px] text-slate-500">Автоматически готовят картинку для OCR</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button id="filterGrayscale" class="filter-btn px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="circle-dot" class="w-3.5 h-3.5"></i> Ч/Б тон
+            </button>
+            <button id="filterContrast" class="filter-btn px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="sun" class="w-3.5 h-3.5"></i> Контраст +
+            </button>
+            <button id="filterThreshold" class="filter-btn px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="binary" class="w-3.5 h-3.5"></i> Четкий текст
+            </button>
+            <button id="filterInvert" class="filter-btn px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="flip-horizontal" class="w-3.5 h-3.5"></i> Инверсия темы
+            </button>
+          </div>
+        </div>
+
+        <!-- Настройки OCR и кнопка пуска -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Язык текста</label>
+              <select id="selectLang" class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
+                <option value="rus+eng" class="bg-slate-900">Русский + English</option>
+                <option value="rus" class="bg-slate-900">Только Русский</option>
+                <option value="eng" class="bg-slate-900">Только English</option>
+                <option value="deu" class="bg-slate-900">Немецкий</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Тип структуры (PSM)</label>
+              <select id="selectPSM" class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 text-xs focus:outline-none focus:border-indigo-500">
+                <option value="3" class="bg-slate-900">Авто (Страница / Документ)</option>
+                <option value="6" class="bg-slate-900">Единый блок / Код / Консоль</option>
+                <option value="7" class="bg-slate-900">Одна строка / Системный путь</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Индикатор прогресса -->
+          <div id="progressContainer" class="hidden flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-xs text-slate-300">
+              <span id="progressStatus" class="truncate max-w-[80%]">Загрузка языковой модели...</span>
+              <span id="progressPercent" class="font-mono text-indigo-400">0%</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+              <div id="progressBar" class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-200 w-0"></div>
+            </div>
+          </div>
+
+          <button id="btnRecognize" disabled class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-white/10 disabled:text-slate-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Распознать текст</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Правая колонка: Редактор результата -->
+      <div class="lg:col-span-6 flex flex-col">
+        <div class="glass-card rounded-2xl p-5 flex flex-col h-full min-h-[500px]">
+          
+          <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i>
+              <span class="font-semibold text-sm text-white">Распознанный текст</span>
+              <span id="accuracyBadge" class="hidden text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium"></span>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button id="btnFixRegex" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-amber-300 transition-colors" title="Умное исправление системных путей и опечаток">
+                <i data-lucide="wand-2" class="w-4 h-4"></i>
+              </button>
+              <button id="btnCopyText" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors" title="Копировать в буфер">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+              </button>
+              <button id="btnDownloadTxt" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors" title="Скачать в .txt">
+                <i data-lucide="download" class="w-4 h-4"></i>
+              </button>
+              <button id="btnClearResult" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-rose-400 transition-colors" title="Очистить поле">
+                <i data-lucide="eraser" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Текстовое поле -->
+          <div class="relative flex-1 flex flex-col">
+            <textarea id="resultText" placeholder="Здесь появится распознанный текст. Вы сможете его отредактировать, скопировать или скачать в один клик..." class="w-full flex-1 p-3 rounded-xl bg-black/40 border border-white/10 text-slate-200 placeholder-slate-500 text-sm font-mono leading-relaxed focus:outline-none focus:border-indigo-500/70 resize-none custom-scrollbar min-h-[350px]"></textarea>
+          </div>
+
+          <!-- Подвал статистики -->
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10 text-xs text-slate-400">
+            <div class="flex items-center gap-4">
+              <span>Символов: <strong id="statChars" class="text-slate-200">0</strong></span>
+              <span>Слов: <strong id="statWords" class="text-slate-200">0</strong></span>
+              <span>Строк: <strong id="statLines" class="text-slate-200">0</strong></span>
+            </div>
+            <span class="text-[11px] text-slate-500">Редактируемое поле</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SEO & FAQ блок для поисковиков Яндекса и Google -->
+    <section class="mt-16 border-t border-white/10 pt-10">
+      <h2 class="text-lg font-bold text-white mb-6 text-center">Часто задаваемые вопросы</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-5 rounded-2xl">
+          <h3 class="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4"></i> Безопасно ли загружать документы?
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Да, на 100%. Сервис LensText OCR работает прямо в вашем браузере с помощью технологии WebAssembly. Изображения никогда не отправляются на удаленные серверы.</p>
+        </div>
+        <div class="glass-card p-5 rounded-2xl">
+          <h3 class="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
+            <i data-lucide="clipboard-paste" class="w-4 h-4"></i> Как вставить скриншот по Ctrl+V?
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Сделайте снимок экрана в Windows (Win+Shift+S) или macOS (Cmd+Shift+4) и просто нажмите Ctrl+V в любом месте открытой страницы.</p>
+        </div>
+        <div class="glass-card p-5 rounded-2xl">
+          <h3 class="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-4 h-4"></i> Что делать, если буквы сливаются?
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Используйте кнопку «Инверсия» для темных тем, кнопку «Контраст +» для бледного текста, либо выделите нужный фрагмент через «Обрезать».</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Модальное окно истории -->
+  <div id="modalHistory" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-lg rounded-2xl p-5 border border-white/15 flex flex-col max-h-[80vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="history" class="w-4 h-4 text-indigo-400"></i> История распознаваний
+        </h3>
+        <button id="btnCloseHistory" class="p-1 rounded-lg text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="historyList" class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2 pr-1"></div>
+      <div class="pt-3 border-t border-white/10 flex justify-between items-center mt-3">
+        <button id="btnClearAllHistory" class="text-xs text-rose-400 hover:underline">Очистить историю</button>
+        <span class="text-[11px] text-slate-500">Хранится локально на устройстве</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Всплывающий Toast для уведомлений -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 transition-all duration-300 pointer-events-none px-4 py-2.5 rounded-xl bg-slate-900 border border-white/20 text-white text-xs font-medium shadow-2xl flex items-center gap-2">
+    <i id="toastIcon" data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMessage">Готово</span>
+  </div>
+
+  <script>
+    // Инициализация Lucide иконок
+    lucide.createIcons();
+
+    // DOM Элементы
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImg = document.getElementById('previewImg');
+    const imageWrapper = document.getElementById('imageWrapper');
+    const cropBox = document.getElementById('cropBox');
+    const cropActions = document.getElementById('cropActions');
+    const btnToggleCrop = document.getElementById('btnToggleCrop');
+    const btnApplyCrop = document.getElementById('btnApplyCrop');
+    const btnCancelCrop = document.getElementById('btnCancelCrop');
+    const btnResetImage = document.getElementById('btnResetImage');
+    const btnClearImage = document.getElementById('btnClearImage');
+    const btnRecognize = document.getElementById('btnRecognize');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+    const progressPercent = document.getElementById('progressPercent');
+    const resultText = document.getElementById('resultText');
+    const statChars = document.getElementById('statChars');
+    const statWords = document.getElementById('statWords');
+    const statLines = document.getElementById('statLines');
+    const accuracyBadge = document.getElementById('accuracyBadge');
+    const btnCopyText = document.getElementById('btnCopyText');
+    const btnDownloadTxt = document.getElementById('btnDownloadTxt');
+    const btnClearResult = document.getElementById('btnClearResult');
+    const btnFixRegex = document.getElementById('btnFixRegex');
+
+    // Состояние фильтров и кадрирования
+    let originalImageSrc = null;
+    let croppedImageSrc = null;
+    let isCroppingActive = false;
+    let cropStart = { x: 0, y: 0 };
+    let cropRect = { x: 0, y: 0, w: 0, h: 0 };
+    let isMouseDown = false;
+
+    const filters = {
+      grayscale: false,
+      contrast: false,
+      threshold: false,
+      invert: false
+    };
+
+    // Всплывающие уведомления (Toast)
+    function showToast(msg, icon = 'check', isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+      toastMsg.innerText = msg;
+      toastIcon.setAttribute('data-lucide', icon);
+      toastIcon.className = `w-4 h-4 ${isError ? 'text-rose-400' : 'text-emerald-400'}`;
+      lucide.createIcons();
+      toast.classList.remove('translate-y-12', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-12', 'opacity-0');
+      }, 3000);
+    }
+
+    // Обработка загрузки файла
+    function loadFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast('Пожалуйста, выберите файл изображения', 'alert-circle', true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        originalImageSrc = e.target.result;
+        croppedImageSrc = originalImageSrc;
+        displayImage(croppedImageSrc);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function displayImage(src) {
+      previewImg.src = src;
+      dropZone.classList.add('hidden');
+      previewContainer.classList.remove('hidden');
+      btnRecognize.disabled = false;
+      applyVisualFilters();
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => loadFile(e.target.files[0]));
+
+    // Drag and Drop
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-indigo-500');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-indigo-500');
+      if (e.dataTransfer.files.length > 0) loadFile(e.dataTransfer.files[0]);
+    });
+
+    // Вставка из буфера обмена (Ctrl + V)
+    window.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          loadFile(file);
+          showToast('Скриншот вставлен из буфера');
+          break;
+        }
+      }
+    });
+
+    // Очистка изображения
+    btnClearImage.addEventListener('click', () => {
+      originalImageSrc = null;
+      croppedImageSrc = null;
+      previewImg.src = '';
+      dropZone.classList.remove('hidden');
+      previewContainer.classList.add('hidden');
+      btnRecognize.disabled = true;
+      resetFilters();
+    });
+
+    btnResetImage.addEventListener('click', () => {
+      if (!originalImageSrc) return;
+      croppedImageSrc = originalImageSrc;
+      previewImg.src = originalImageSrc;
+      applyVisualFilters();
+      showToast('Исходное фото возвращено');
+    });
+
+    // Фильтры предобработки
+    function setupFilterBtn(id, key) {
+      const btn = document.getElementById(id);
+      btn.addEventListener('click', () => {
+        filters[key] = !filters[key];
+        btn.classList.toggle('bg-indigo-600', filters[key]);
+        btn.classList.toggle('text-white', filters[key]);
+        applyVisualFilters();
+      });
+    }
+    setupFilterBtn('filterGrayscale', 'grayscale');
+    setupFilterBtn('filterContrast', 'contrast');
+    setupFilterBtn('filterThreshold', 'threshold');
+    setupFilterBtn('filterInvert', 'invert');
+
+    function resetFilters() {
+      for (let k in filters) filters[k] = false;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-indigo-600', 'text-white');
+      });
+      applyVisualFilters();
+    }
+
+    function applyVisualFilters() {
+      let f = [];
+      if (filters.grayscale) f.push('grayscale(100%)');
+      if (filters.contrast) f.push('contrast(180%)');
+      if (filters.threshold) f.push('contrast(250%) grayscale(100%)');
+      if (filters.invert) f.push('invert(100%)');
+      previewImg.style.filter = f.join(' ');
+    }
+
+    // Режим кадрирования (Crop)
+    btnToggleCrop.addEventListener('click', () => {
+      isCroppingActive = !isCroppingActive;
+      cropBox.classList.toggle('hidden', !isCroppingActive);
+      cropActions.classList.toggle('hidden', !isCroppingActive);
+      imageWrapper.style.cursor = isCroppingActive ? 'crosshair' : 'default';
+    });
+
+    btnCancelCrop.addEventListener('click', () => {
+      isCroppingActive = false;
+      cropBox.classList.add('hidden');
+      cropActions.classList.add('hidden');
+      imageWrapper.style.cursor = 'default';
+    });
+
+    imageWrapper.addEventListener('mousedown', (e) => {
+      if (!isCroppingActive) return;
+      isMouseDown = true;
+      const rect = imageWrapper.getBoundingClientRect();
+      cropStart.x = e.clientX - rect.left;
+      cropStart.y = e.clientY - rect.top;
+      cropBox.style.left = cropStart.x + 'px';
+      cropBox.style.top = cropStart.y + 'px';
+      cropBox.style.width = '0px';
+      cropBox.style.height = '0px';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isCroppingActive || !isMouseDown) return;
+      const rect = imageWrapper.getBoundingClientRect();
+      const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+      cropRect.x = Math.min(curX, cropStart.x);
+      cropRect.y = Math.min(curY, cropStart.y);
+      cropRect.w = Math.abs(curX - cropStart.x);
+      cropRect.h = Math.abs(curY - cropStart.y);
+
+      cropBox.style.left = cropRect.x + 'px';
+      cropBox.style.top = cropRect.y + 'px';
+      cropBox.style.width = cropRect.w + 'px';
+      cropBox.style.height = cropRect.h + 'px';
+    });
+
+    window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+    btnApplyCrop.addEventListener('click', () => {
+      if (cropRect.w < 10 || cropRect.h < 10) {
+        showToast('Выделите область большего размера', 'alert-circle', true);
+        return;
+      }
+      const scaleX = previewImg.naturalWidth / previewImg.clientWidth;
+      const scaleY = previewImg.naturalHeight / previewImg.clientHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = cropRect.w * scaleX;
+      canvas.height = cropRect.h * scaleY;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(
+        previewImg,
+        cropRect.x * scaleX, cropRect.y * scaleY, canvas.width, canvas.height,
+        0, 0, canvas.width, canvas.height
+      );
+      croppedImageSrc = canvas.toDataURL();
+      previewImg.src = croppedImageSrc;
+      btnCancelCrop.click();
+      showToast('Область успешно обрезана');
+    });
+
+    // ПОДГОТОВКА ИЗОБРАЖЕНИЯ С ЗАЩИТОЙ ПАМЯТИ (Anti-Crash Clamp)
+    function prepareOptimizedImageForOCR() {
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+      const img = previewImg;
+
+      let scale = 1.0;
+      const maxDim = Math.max(img.naturalWidth, img.naturalHeight);
+
+      // Умный Clamp: мелкие скриншоты увеличиваем, гигантские фото со смартфонов сжимаем
+      if (maxDim < 900) {
+        scale = 2.0; // апскейл для мелкого шрифта
+      } else if (maxDim > 2000) {
+        scale = 1800 / maxDim; // сжатие во избежание краша Tesseract на мобильных устройствах
+      }
+
+      const targetW = Math.round(img.naturalWidth * scale);
+      const targetH = Math.round(img.naturalHeight * scale);
+
+      // Белый паддинг (+30px со всех сторон)
+      const padding = 30;
+      offCanvas.width = targetW + padding * 2;
+      offCanvas.height = targetH + padding * 2;
+
+      offCtx.fillStyle = '#ffffff';
+      offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+      offCtx.imageSmoothingEnabled = true;
+      offCtx.imageSmoothingQuality = 'high';
+
+      offCtx.drawImage(img, padding, padding, targetW, targetH);
+
+      // Применение пиксельных фильтров
+      if (filters.grayscale || filters.contrast || filters.threshold || filters.invert) {
+        const imgData = offCtx.getImageData(padding, padding, targetW, targetH);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          let r = d[i], g = d[i+1], b = d[i+2];
+          let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (filters.contrast) gray = ((gray - 128) * 1.5) + 128;
+          if (filters.threshold) gray = gray > 135 ? 255 : 0;
+          if (filters.invert) gray = 255 - gray;
+          gray = Math.max(0, Math.min(255, gray));
+          d[i] = d[i+1] = d[i+2] = gray;
+        }
+        offCtx.putImageData(imgData, padding, padding);
+      }
+
+      return offCanvas.toDataURL('image/png');
+    }
+
+    // ДВИЖОК РАСПОЗНАВАНИЯ (TESSERACT.JS)
+    btnRecognize.addEventListener('click', async () => {
+      if (!croppedImageSrc) return;
+
+      btnRecognize.disabled = true;
+      progressContainer.classList.remove('hidden');
+      progressBar.style.width = '5%';
+      progressPercent.innerText = '5%';
+      progressStatus.innerText = 'Инициализация ядра Tesseract...';
+
+      try {
+        const lang = document.getElementById('selectLang').value;
+        const psm = document.getElementById('selectPSM').value;
+        const processedDataUrl = prepareOptimizedImageForOCR();
+
+        const worker = await Tesseract.createWorker(lang, 1, {
+          logger: m => {
+            if (m.status === 'loading tesseract core') progressStatus.innerText = 'Загрузка ядра WebAssembly...';
+            else if (m.status === 'initializing tesseract') progressStatus.innerText = 'Инициализация Tesseract...';
+            else if (m.status === 'loading language traineddata') progressStatus.innerText = `Загрузка языковой базы (${lang})...`;
+            else if (m.status === 'initializing api') progressStatus.innerText = 'Настройка параметров распознавания...';
+            else if (m.status === 'recognizing text') {
+              const p = Math.round(m.progress * 100);
+              progressStatus.innerText = `Распознавание символов: ${p}%`;
+              progressBar.style.width = `${p}%`;
+              progressPercent.innerText = `${p}%`;
+            }
+          }
+        });
+
+        await worker.setParameters({
+          tessedit_pageseg_mode: psm,
+        });
+
+        const ret = await worker.recognize(processedDataUrl);
+        await worker.terminate();
+
+        resultText.value = ret.data.text;
+        updateTextStats();
+
+        // Отображение точности
+        const conf = Math.round(ret.data.confidence);
+        accuracyBadge.innerText = `Точность: ${conf}%`;
+        accuracyBadge.classList.remove('hidden');
+
+        saveToHistory(ret.data.text);
+        showToast('Текст успешно распознан!');
+      } catch (err) {
+        console.error(err);
+        showToast('Ошибка при распознавании. Попробуйте обрезать фото.', 'alert-circle', true);
+      } finally {
+        btnRecognize.disabled = false;
+        setTimeout(() => progressContainer.classList.add('hidden'), 1000);
+      }
+    });
+
+    // Умное исправление путей и артефактов
+    btnFixRegex.addEventListener('click', () => {
+      let t = resultText.value;
+      if (!t.trim()) return;
+
+      // 1. Исправление поврежденных системных дисков Windows (CA\ -> C:\)
+      t = t.replace(/(?:^|\s)([a-zA-Zа-яА-Я])[\\\/|]([a-zA-Z0-9_\-\.]+)/g, '$1:\\$2');
+      // 2. Исправление двойных обратных слэшей
+      t = t.replace(/\\\\+/g, '\\');
+      // 3. Склеивание переносов строк через дефис
+      t = t.replace(/([а-яa-z])-[\r\n]+([а-яa-z])/gi, '$1$2');
+      // 4. Очистка одиночного висячего мусора
+      t = t.replace(/[\^\~°#]/g, '');
+
+      resultText.value = t;
+      updateTextStats();
+      showToast('Текст очищен и нормализован', 'wand-2');
+    });
+
+    // Подсчет статистики текста
+    function updateTextStats() {
+      const val = resultText.value;
+      statChars.innerText = val.length;
+      statWords.innerText = val.trim() ? val.trim().split(/\s+/).length : 0;
+      statLines.innerText = val.trim() ? val.split(/\r\n|\r|\n/).length : 0;
+    }
+    resultText.addEventListener('input', updateTextStats);
+
+    // Копирование, выгрузка и очистка текста
+    btnCopyText.addEventListener('click', () => {
+      if (!resultText.value) return;
+      navigator.clipboard.writeText(resultText.value).then(() => {
+        showToast('Скопировано в буфер обмена');
+      });
+    });
+
+    btnDownloadTxt.addEventListener('click', () => {
+      if (!resultText.value) return;
+      const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `OCR_${new Date().toISOString().slice(0,10)}.txt`;
+      a.click();
+      showToast('Файл .txt скачан');
+    });
+
+    btnClearResult.addEventListener('click', () => {
+      resultText.value = '';
+      accuracyBadge.classList.add('hidden');
+      updateTextStats();
+    });
+
+    // Локальная история распознаваний (LocalStorage)
+    function saveToHistory(text) {
+      if (!text || !text.trim()) return;
+      let history = JSON.parse(localStorage.getItem('lenstext_history') || '[]');
+      history.unshift({
+        text: text.slice(0, 300),
+        fullText: text,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      if (history.length > 15) history.pop();
+      localStorage.setItem('lenstext_history', JSON.stringify(history));
+    }
+
+    const modalHistory = document.getElementById('modalHistory');
+    const historyList = document.getElementById('historyList');
+
+    document.getElementById('btnOpenHistory').addEventListener('click', () => {
+      const history = JSON.parse(localStorage.getItem('lenstext_history') || '[]');
+      historyList.innerHTML = '';
+      if (history.length === 0) {
+        historyList.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">История пока пуста</p>';
+      } else {
+        history.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 cursor-pointer text-xs text-slate-300 transition-colors flex flex-col gap-1';
+          div.innerHTML = `<div class="flex justify-between text-[11px] text-slate-500 font-mono"><span>${item.date}</span><span class="text-indigo-400">Вставить</span></div><p class="truncate">${item.text}</p>`;
+          div.onclick = () => {
+            resultText.value = item.fullText;
+            updateTextStats();
+            modalHistory.classList.add('hidden');
+            showToast('Текст загружен из истории');
+          };
+          historyList.appendChild(div);
+        });
+      }
+      modalHistory.classList.remove('hidden');
+    });
+
+    document.getElementById('btnCloseHistory').addEventListener('click', () => modalHistory.classList.add('hidden'));
+    document.getElementById('btnClearAllHistory').addEventListener('click', () => {
+      localStorage.removeItem('lenstext_history');
+      modalHistory.classList.add('hidden');
+      showToast('История очищена');
+    });
+  </script>
+</body>
+</html>
